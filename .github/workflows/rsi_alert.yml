@@ -1,0 +1,30 @@
+name: AUD/NZD RSI Alert
+
+on:
+  schedule:
+    # 8H足は UTC 00:00 / 08:00 / 16:00 に確定
+    # データ反映に数分かかるため 5 分後に実行
+    - cron: '5 0,8,16 * * *'
+  workflow_dispatch: # 手動実行も可能
+
+jobs:
+  check-rsi:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Run RSI alert
+        env:
+          TWELVEDATA_API_KEY: ${{ secrets.TWELVEDATA_API_KEY }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: python rsi_alert.py
