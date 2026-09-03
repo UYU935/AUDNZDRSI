@@ -1,7 +1,21 @@
+import json
 import os
-import sys
 import requests
 from datetime import datetime, timezone
+
+STATE_FILE = "state.json"
+
+
+def load_prev_signal() -> str:
+    if os.path.exists(STATE_FILE):
+        with open(STATE_FILE) as f:
+            return json.load(f).get("signal", "neutral")
+    return "neutral"
+
+
+def save_signal(signal: str):
+    with open(STATE_FILE, "w") as f:
+        json.dump({"signal": signal}, f)
 
 SYMBOL = "AUD/NZD"
 INTERVAL = "8h"
@@ -90,11 +104,22 @@ def main():
     print(f"AUD/NZD RSI(14) 8H: {rsi_value:.2f}  確定時刻: {candle_time}  価格: {price:.5f}")
 
     if rsi_value > RSI_OVERBOUGHT:
-        send_discord(rsi_value, price, candle_time, "overbought")
+        current_signal = "overbought"
     elif rsi_value < RSI_OVERSOLD:
-        send_discord(rsi_value, price, candle_time, "oversold")
+        current_signal = "oversold"
     else:
+        current_signal = "neutral"
+
+    prev_signal = load_prev_signal()
+
+    if current_signal != "neutral" and current_signal != prev_signal:
+        send_discord(rsi_value, price, candle_time, current_signal)
+    elif current_signal == "neutral":
         print(f"RSIはニュートラルゾーン ({RSI_OVERSOLD} ≤ {rsi_value:.2f} ≤ {RSI_OVERBOUGHT}) — 通知なし")
+    else:
+        print(f"シグナル継続中 ({current_signal}) — 重複通知スキップ")
+
+    save_signal(current_signal)
 
 
 if __name__ == "__main__":
